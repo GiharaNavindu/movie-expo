@@ -2,6 +2,7 @@ import {
   ArrowBack as BackIcon,
   Favorite,
   FavoriteBorder,
+  OpenInNew as OpenInNewIcon,
   PlayArrow as PlayIcon,
 } from "@mui/icons-material";
 import {
@@ -14,11 +15,13 @@ import {
   Container,
   Divider,
   Rating,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getBackdropUrl, getPosterUrl, tmdbApi } from "../api/tmdb";
+import { MovieCard } from "../components/MovieCard";
 import { TrailerModal } from "../components/TrailerModal";
 import { useMovies } from "../context/MovieContext";
 
@@ -28,6 +31,7 @@ export const MovieDetailsPage = () => {
   const { isFavorite, toggleFavorite } = useMovies();
 
   const [movie, setMovie] = useState(null);
+  const [similarMovies, setSimilarMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [trailerOpen, setTrailerOpen] = useState(false);
@@ -36,8 +40,12 @@ export const MovieDetailsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await tmdbApi.getMovieDetails(id);
+      const [data, similar] = await Promise.all([
+        tmdbApi.getMovieDetails(id),
+        tmdbApi.getSimilarMovies(id),
+      ]);
       setMovie(data);
+      setSimilarMovies(similar);
     } catch (err) {
       console.error("Error fetching details:", err);
       const msg =
@@ -96,6 +104,9 @@ export const MovieDetailsPage = () => {
   );
 
   const cast = movie.credits?.cast?.slice(0, 8) || [];
+  const director = movie.credits?.crew?.find(
+    (person) => person.job === "Director",
+  )?.name;
 
   return (
     <Box>
@@ -171,7 +182,8 @@ export const MovieDetailsPage = () => {
               alt={movie.title}
               onError={(e) => {
                 e.currentTarget.onerror = null;
-                e.currentTarget.src = "https://placehold.co/500x750?text=No+Poster";
+                e.currentTarget.src =
+                  "https://placehold.co/500x750?text=No+Poster";
               }}
               sx={{
                 width: "100%",
@@ -197,7 +209,13 @@ export const MovieDetailsPage = () => {
             }}
           >
             <Box
-              sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 1, flexWrap: "wrap" }}
+              sx={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 1.5,
+                mb: 0.5,
+                flexWrap: "wrap",
+              }}
             >
               <Typography
                 variant="h4"
@@ -211,11 +229,32 @@ export const MovieDetailsPage = () => {
                 {movie.title}
               </Typography>
               {movie.release_date && (
-                <Typography variant="h5" color="text.secondary" sx={{ fontWeight: 400 }}>
+                <Typography
+                  variant="h5"
+                  color="text.secondary"
+                  sx={{ fontWeight: 400 }}
+                >
                   ({movie.release_date.split("-")[0]})
                 </Typography>
               )}
             </Box>
+
+            {/* Director Credit */}
+            {director && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mb: 1.5, fontSize: "0.9rem" }}
+              >
+                Directed by{" "}
+                <Box
+                  component="span"
+                  sx={{ color: "text.primary", fontWeight: 600 }}
+                >
+                  {director}
+                </Box>
+              </Typography>
+            )}
 
             {/* Tagline */}
             {movie.tagline && (
@@ -266,7 +305,13 @@ export const MovieDetailsPage = () => {
                 variant={favoriteActive ? "contained" : "outlined"}
                 color={favoriteActive ? "primary" : "inherit"}
                 size="small"
-                startIcon={favoriteActive ? <Favorite fontSize="small" /> : <FavoriteBorder fontSize="small" />}
+                startIcon={
+                  favoriteActive ? (
+                    <Favorite fontSize="small" />
+                  ) : (
+                    <FavoriteBorder fontSize="small" />
+                  )
+                }
                 onClick={() => toggleFavorite(movie)}
                 sx={{
                   borderColor: "divider",
@@ -276,15 +321,42 @@ export const MovieDetailsPage = () => {
                 {favoriteActive ? "In Watchlist" : "Add to Watchlist"}
               </Button>
 
-              {trailer && (
+              <Tooltip
+                title={trailer ? "" : "No trailer available for this title"}
+              >
+                <span>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    disabled={!trailer}
+                    startIcon={<PlayIcon fontSize="small" />}
+                    onClick={() => setTrailerOpen(true)}
+                  >
+                    {trailer ? "Watch Trailer" : "No Trailer"}
+                  </Button>
+                </span>
+              </Tooltip>
+
+              {movie.imdb_id && (
                 <Button
-                  variant="contained"
-                  color="primary"
+                  variant="outlined"
+                  color="inherit"
                   size="small"
-                  startIcon={<PlayIcon fontSize="small" />}
-                  onClick={() => setTrailerOpen(true)}
+                  href={`https://www.imdb.com/title/${movie.imdb_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  startIcon={<OpenInNewIcon fontSize="small" />}
+                  sx={{
+                    borderColor: "divider",
+                    color: "text.secondary",
+                    "&:hover": {
+                      borderColor: "text.primary",
+                      color: "text.primary",
+                    },
+                  }}
                 >
-                  Watch Trailer
+                  IMDb
                 </Button>
               )}
             </Box>
@@ -385,6 +457,40 @@ export const MovieDetailsPage = () => {
                   ))}
                 </Box>
               </>
+            )}
+
+            {/* More Like This Bottom Shelf */}
+            {similarMovies.length > 0 && (
+              <Box
+                sx={{
+                  mt: 6,
+                  pt: 4,
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: 600, mb: 2.5 }}
+                >
+                  More Like This
+                </Typography>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "repeat(2, 1fr)",
+                      sm: "repeat(3, 1fr)",
+                      md: "repeat(5, 1fr)",
+                    },
+                    gap: 2.5,
+                  }}
+                >
+                  {similarMovies.map((simMovie) => (
+                    <MovieCard key={simMovie.id} movie={simMovie} />
+                  ))}
+                </Box>
+              </Box>
             )}
           </Box>
         </Box>

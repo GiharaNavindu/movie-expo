@@ -75,4 +75,17 @@ export const tmdbApi = {
     const response = await apiClient.get('/discover/movie', { params });
     return response.data;
   },
+
+  // Fetching similar movies
+  getSimilarMovies: async (movieId) => {
+    try {
+      const response = await apiClient.get(`/movie/${movieId}/similar`, {
+        params: { page: 1 },
+      });
+      return response.data?.results?.slice(0, 5) || [];
+    } catch (err) {
+      console.warn('Failed to fetch similar movies:', err);
+      return [];
+    }
+  },
 };

@@ -8,6 +8,7 @@ import {
   Rating,
   Typography,
 } from "@mui/material";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getPosterUrl } from "../api/tmdb";
 import { useMovies } from "../context/MovieContext";
@@ -15,6 +16,7 @@ import { useMovies } from "../context/MovieContext";
 export const MovieCard = ({ movie }) => {
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useMovies();
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const favoriteActive = isFavorite(movie.id);
   const releaseYear = movie.release_date
@@ -31,9 +33,20 @@ export const MovieCard = ({ movie }) => {
     toggleFavorite(movie);
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleCardClick();
+    }
+  };
+
   return (
     <Card
       onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="button"
+      aria-label={`View details for ${movie.title}`}
       elevation={0}
       sx={{
         width: "100%",
@@ -47,10 +60,17 @@ export const MovieCard = ({ movie }) => {
         border: "1px solid",
         borderColor: "divider",
         overflow: "hidden",
+        outline: "none",
         transition: "border-color 0.15s ease, transform 0.15s ease",
         "&:hover": {
           borderColor: "text.secondary",
           transform: "translateY(-2px)",
+        },
+        "&:focus-visible": {
+          borderColor: "primary.main",
+          outline: "2px solid",
+          outlineColor: "primary.main",
+          outlineOffset: "2px",
         },
       }}
     >
@@ -58,7 +78,7 @@ export const MovieCard = ({ movie }) => {
       <IconButton
         onClick={handleFavoriteClick}
         size="small"
-        aria-label="add to favorites"
+        aria-label={favoriteActive ? "Remove from watchlist" : "Add to watchlist"}
         sx={{
           position: "absolute",
           top: 8,
@@ -78,24 +98,30 @@ export const MovieCard = ({ movie }) => {
         )}
       </IconButton>
 
-      {/* Poster Image with strict 2:3 cinema aspect ratio */}
-      <CardMedia
-        component="img"
-        image={getPosterUrl(movie.poster_path)}
-        alt={movie.title}
-        loading="lazy"
-        onError={(e) => {
-          e.currentTarget.onerror = null;
-          e.currentTarget.src = "https://placehold.co/500x750?text=No+Poster";
-        }}
-        sx={{
-          width: "100%",
-          aspectRatio: "2/3",
-          objectFit: "cover",
-          display: "block",
-          bgcolor: "action.hover",
-        }}
-      />
+      {/* Poster Image with strict 2:3 cinema aspect ratio and smooth fade-in */}
+      <Box sx={{ width: "100%", aspectRatio: "2/3", bgcolor: "action.hover", overflow: "hidden" }}>
+        <CardMedia
+          component="img"
+          image={getPosterUrl(movie.poster_path)}
+          alt={movie.title}
+          loading="lazy"
+          onLoad={() => setImageLoaded(true)}
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = "https://placehold.co/500x750?text=No+Poster";
+            setImageLoaded(true);
+          }}
+          sx={{
+            width: "100%",
+            height: "100%",
+            aspectRatio: "2/3",
+            objectFit: "cover",
+            display: "block",
+            opacity: imageLoaded ? 1 : 0,
+            transition: "opacity 0.25s ease-in-out",
+          }}
+        />
+      </Box>
 
       {/* Details Body */}
       <CardContent sx={{ flexGrow: 1, p: 2, display: "flex", flexDirection: "column" }}>

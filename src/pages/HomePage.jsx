@@ -188,7 +188,21 @@ export const HomePage = () => {
       )}
 
       {/* Movie Grid */}
-      <MovieGrid movies={movies} loading={loading} skeletonCount={10} />
+      <MovieGrid
+        movies={movies}
+        loading={loading}
+        skeletonCount={10}
+        emptyMessage={
+          query.trim()
+            ? `No films found for "${query}".`
+            : "No films found matching your selected filters."
+        }
+        suggestions={genres.slice(0, 5)}
+        onSelectSuggestion={(genreId) => {
+          setSelectedGenre(genreId);
+          setQuery("");
+        }}
+      />
 
       {/* Load More Button (Bonus Feature) */}
       {page < totalPages && (
