@@ -22,6 +22,14 @@ export const SearchBar = ({ onSearch, initialValue = "" }) => {
 
   const { recentSearches, addRecentSearch, removeRecentSearch } = useMovies();
 
+  const onSearchRef = useRef(onSearch);
+  const addRecentSearchRef = useRef(addRecentSearch);
+
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+    addRecentSearchRef.current = addRecentSearch;
+  });
+
   // Keep local search term synchronized if parent changes it
   useEffect(() => {
     setSearchTerm(initialValue);
@@ -34,9 +42,9 @@ export const SearchBar = ({ onSearch, initialValue = "" }) => {
       return;
     }
     // Only trigger live search if term changed
-    onSearch(debouncedTerm);
+    onSearchRef.current(debouncedTerm);
     if (debouncedTerm.trim().length >= 2) {
-      addRecentSearch(debouncedTerm.trim());
+      addRecentSearchRef.current(debouncedTerm.trim());
     }
   }, [debouncedTerm]);
 
